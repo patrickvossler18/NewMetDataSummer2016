@@ -1,0 +1,79 @@
+---
+title: "LA Crime Data"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+```{r prep}
+source('R/HelperFunctions.R')
+
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyr)
+library(lubridate)
+```
+
+Read the data in using `readLAcsv()`: (dependent on `readr` package).
+
+```{r}
+c2011 <- readLAcsv(year = 2011) # colnames don't match
+c2012 <- readLAcsv(year = 2012)
+c2013 <- readLAcsv(year = 2013)
+c2014 <- readLAcsv(year = 2014)
+c2015 <- readLAcsv(year = 2015)
+c2016 <- readLAcsv(year = 2016)
+
+standardColNames <- colnames(c2016)
+# colnames(c2011) <- standardColNames
+colnames(c2012) <- standardColNames
+colnames(c2013) <- standardColNames
+colnames(c2014) <- standardColNames
+colnames(c2015) <- standardColNames
+colnames(c2016) <- standardColNames
+```
+
+Rowbind these together to form one long data set spanning years 2011 to 2016 (partial).
+
+```{r rowbind}
+dfList <- list(
+  c2012 = c2012, c2013 = c2013,
+  c2014 = c2014, c2015 = c2015, c2016 = c2016
+)
+
+LAcrime <- ldply(dfList, 'rbind')
+```
+
+Clean and process the data. 
+```{r, message = F, warning = F}
+# format dates
+LAcrime$`Date Rptd` <- as.Date(LAcrime$`Date Rptd`, '%m/%d/%Y')
+LAcrime$`DATE OCC` <- as.Date(LAcrime$`DATE OCC`, '%m/%d/%Y')
+# day difference from date occurred to date reported
+LAcrime$days_occ_rep <- LAcrime$`Date Rptd` - LAcrime$`DATE OCC`
+# reformat year
+colnames(LAcrime)[1] <- 'Year'
+LAcrime$Year <- LAcrime$Year %>%
+  substr(start = 2, stop = 5)
+# split `LOCATION` into latitude and longitude
+LAcrime <- LAcrime %>%
+  splitLatLong()
+# give month, day, year, and day of week of dates
+LAcrime$`rpted_year` <- year(LAcrime$`Date Rptd`)
+LAcrime$rpted_month <- month(LAcrime$`Date Rptd`)
+LAcrime$rpted_day <- day(LAcrime$`Date Rptd`)
+LAcrime$rpted_weekday <- weekdays(LAcrime$`Date Rptd`)
+
+LAcrime$`occ_year` <- year(LAcrime$`DATE OCC`)
+LAcrime$occ_month <- month(LAcrime$`DATE OCC`)
+LAcrime$occ_day <- day(LAcrime$`DATE OCC`)
+LAcrime$occ_weekday <- weekdays(LAcrime$`DATE OCC`)
+```
+
+Save the data for now
+
+```{r}
+saveRDS(LAcrime, 'ProcessedData/LAcrime2012-2016.rds')
+```

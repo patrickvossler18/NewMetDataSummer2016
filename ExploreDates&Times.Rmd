@@ -1,0 +1,72 @@
+---
+title: "Explore Dates & Times"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+# Time / Dates Analysis
+Break down *Crm Cd Desc* by 
+
+- Area Name
+- Month of Year
+- Day of week
+
+
+```{r Load the Data, results = 'hide', message = FALSE, echo = FALSE}
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(xkcd)
+library(plotly)
+
+LAcrime <- readRDS('ProcessedData/LAcrime2012-2016.rds')
+```
+
+Area Plots
+
+```{r, fig.width = 10}
+s1 <- LAcrime %>%
+  group_by(area = `AREA NAME`,
+           crime = `Crm Cd Desc`) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  filter(count > 1000)
+ 
+s1 %>%
+  ggplot(aes(x = crime, y = count, fill = crime)) +
+  geom_bar(stat = 'identity') + 
+  facet_wrap(~ area)
+```
+
+Month of Year
+
+```{r, fig.width = 10}
+s2 <- LAcrime %>%
+  group_by(month_rpt = rpted_month,
+           crime = `Crm Cd Desc`) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  filter(count > 1000)
+
+s2 %>%
+  ggplot(aes(x = crime, y = count, fill = crime)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~month_rpt)
+```
+
+Weekday
+
+```{r, fig.width = 10}
+s2 <- LAcrime %>%
+  group_by(occ_weekday = occ_weekday,
+           crime = `Crm Cd Desc`) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)) %>%
+  filter(count > 1000)
+
+s2 %>%
+  ggplot(aes(x = occ_weekday, y = count, fill = occ_weekday)) +
+  geom_bar(stat = 'identity') +
+  facet_wrap(~crime)
+```
