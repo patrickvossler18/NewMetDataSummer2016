@@ -9,7 +9,7 @@ readLAcsv <- function(year, subdirectory = 'RawData/') {
 # split Location col into Lat/Long
 splitLatLong <- function(df) {
   df <- df %>%
-    separate(`LOCATION`, c('Lat', 'Long'), sep = ', ')
+    separate(`Location 1`, c('Lat', 'Long'), sep = ', ')
   df$Lat <- gsub(pattern = '(', replacement = '', df$Lat, fixed = T)
   df$Long <- gsub(pattern = ')', replacement = '', df$Long, fixed = T)
   df$Lat <- df$Lat %>% as.numeric()
