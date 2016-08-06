@@ -30,7 +30,7 @@ sapply(crimeDfList, 'colnames')
 LAcrime <- ldply(crimeDfList, 'rbind')
 # combine all cleaning and processing into 1 function here
 LAcrime <- cleanAndProcess(LAcrime)
-
+LAcrime = make_vars_date(LAcrime)
 saveRDS(LAcrime, 'ProcessedData/LAcrime2012-2016.rds')
 
 # Load in Stop Data
