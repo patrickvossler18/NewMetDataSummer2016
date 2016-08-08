@@ -3,6 +3,7 @@ library(ggplot2)
 library(ggthemes)
 library(xkcd)
 library(plotly)
+library(readr)
 
 LAcrime <- readRDS('ProcessedData/LAcrime2012-2016.rds')
 # explore some Summary Data ----
@@ -102,3 +103,14 @@ ctd_plot <- ctd_occ %>%
   theme_xkcd()
 
 ctd_plot %>% ggplotly() # save manually
+
+LAcrime$`Crm Cd Desc` %>%
+  unique() %>%
+  as.data.frame() %>%
+  write_csv(path = 'Output/uniqueCrimeTypes.csv')
+# -----------------------------------------------------
+LAcrime %>%
+  group_by(`Crm Cd Desc`) %>%
+  summarize(count = n()) %>%
+  arrange(count) %>%
+  write_csv(path = 'Output/TypesOfCrimeCounts.csv')

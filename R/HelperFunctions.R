@@ -1,5 +1,7 @@
 # read each CSV file
 # uses read_csv from readr
+library(reshape2)
+
 readLAcsv <- function(year, subdirectory = 'RawData/') {
   fileName <- paste0(subdirectory, 'LAPD_Crime_and_Collision_Raw_data_for_',
                       year, '.csv')
@@ -9,10 +11,12 @@ readLAcsv <- function(year, subdirectory = 'RawData/') {
 # split Location col into Lat/Long
 splitLatLong <- function(df) {
   df <- df %>%
-    separate(`LOCATION`, c('Lat', 'Long'), sep = ', ')
+    separate(`Location 1`, c('Lat', 'Long'), sep = ', ')
   df$Lat <- gsub(pattern = '(', replacement = '', df$Lat, fixed = T)
   df$Long <- gsub(pattern = ')', replacement = '', df$Long, fixed = T)
   df$Lat <- df$Lat %>% as.numeric()
+  df$Lat[df$Lat < 30] <- NA
+  df$Long[df$Long > 110] <- NA
   df$Long <- df$Long %>% as.numeric()
   return(df)
 }
@@ -34,7 +38,7 @@ cleanAndProcess <- function(df) {
   # ugly time fix
   df$`DATETIME OCC` <- reformatTimeOcc(df)
   
-  colnames(df)[1] <- 'year'  # rename/ clean .id col
+  colnames(df)[1] <- 'year_id'  # rename/ clean .id col
   df[[1]] <- df[[1]] %>%
     substr(start = 2, stop = 5) 
   
@@ -42,8 +46,78 @@ cleanAndProcess <- function(df) {
   return(df)
 }
 
+
+
+make_vars_date <- function(crime_df) {
+  crime_df$Years = strftime((crime_df$`DATE OCC`),"%Y")
+  crime_df$Month = strftime((crime_df$`DATE OCC`),"%m")
+  crime_df$DayOfMonth = strftime((crime_df$`DATE OCC`),"%d")
+  crime_df$Hour = strftime(strptime(LAcrime$`DATETIME OCC`,"%H:%M"),"%H")
+  crime_df$YearsMo = paste( crime_df$Years, crime_df$Month,sep = "-" )
+  crime_df$DayOfWeek = factor(weekdays(crime_df$`DATE OCC`),
+                              levels=c("Monday","Tuesday",
+                                       "Wednesday","Thursday",
+                                       "Friday","Saturday","Sunday"),
+                              ordered=TRUE)
+  crime_df$weekday = "Weekday"
+  crime_df$weekday[crime_df$DayOfWeek== "Saturday" | 
+                     crime_df$DayOfWeek== "Sunday" | 
+                     crime_df$DayOfWeek== "Friday" ] = "Weekend"
+  addr_spl = strsplit(as.character(crime_df$Address),"/")
+  crime_df$Intersection = ifelse(!is.na(crime_df$`Cross Street`),1,0)
+  
+  #Because we are using Date Occurred, there are some much older crimes that show up in our dataset
+  #For EDA purposes I am going to remove crimes that happened before 2012
+  crime_df = crime_df[as.numeric(crime_df$Years) >= 2012,]
+  
+  return(crime_df)
+}
+
+
+# functions to make contour maps
+
+map_contours <- function(data_trunc, alp) {
+  p1 = ggmap(map, extent='device') + 
+    geom_point(data=data_trunc, aes(x=Long, y=Lat), alpha= alp) + 
+    stat_density2d(aes(x = Long, y = Lat,
+                       fill = ..level.., alpha = ..level..),
+                   size = 0.1, data = data_trunc, n=100,
+                   geom = "polygon") +
+    theme(legend.position="none")
+  return(p1)
+}
+
+
+# for cleaning Stop Data
 cleanStopData <- function(df) {
   df$`STOP_DT` <- as.Date(df$`STOP_DT`, format = '%m/%d/%Y')
   df$`STOP_TM` <- as.POSIXct(strptime(df$`STOP_TM`, format = '%H:%M'))
   return(df)
+}
+
+
+# visualize missing data
+ggplot_missing <- function(x){
+  x %>% 
+    is.na %>%
+    melt %>%
+    ggplot(data = .,
+           aes(x = Var2,
+               y = Var1)) +
+    geom_raster(aes(fill = value)) +
+    scale_fill_grey(name = "",
+                    labels = c("Present","Missing")) +
+    theme_minimal() + 
+    theme(axis.text.x  = element_text(angle=45, vjust=0.5)) + 
+    labs(x = "Variables in Dataset",
+         y = "Rows / observations")
+}
+
+# bin by lat and long
+bin_lat_long <- function(lat_vec, long_vec, breaks = 100) {
+  lat_vec[lat_vec < 30] <- NA     # catch these 'errors' if haven't already
+  long_vec[long_vec > -100] <- NA
+  lat_cut <- cut(lat_vec, breaks = breaks) %>% as.character()
+  long_cut <- cut(long_vec, breaks = breaks) %>% as.character()
+  return(paste(lat_cut, long_cut, sep = '-'))
 }
