@@ -1,3 +1,6 @@
-
 .DS_Store
+.Rproj.user
 .Rhistory
+.RData
+.Ruserdata
+/ProcessedData/LAcrime2012-2016.feather
